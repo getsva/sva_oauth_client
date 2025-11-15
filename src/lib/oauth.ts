@@ -1,16 +1,11 @@
 // OAuth utility functions for Google and GitHub
 // Frontend-initiated OAuth flow - redirects directly to providers
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001';
-const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
-// Ensure API_BASE_URL doesn't have trailing slash and is correctly formatted
-let apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001/api/auth';
-apiBaseUrl = apiBaseUrl.replace(/\/+$/, ''); // Remove all trailing slashes
-// Ensure it ends with /api/auth
-if (!apiBaseUrl.endsWith('/api/auth')) {
-  apiBaseUrl = apiBaseUrl.replace(/\/api\/?$/, '') + '/api/auth';
-}
-const API_BASE_URL = apiBaseUrl;
+import config from '@/config/env';
+
+const BACKEND_URL = config.backendUrl;
+const FRONTEND_URL = config.frontendUrl;
+const API_BASE_URL = config.apiBaseUrl;
 
 /**
  * Generate a random state string for OAuth security (CSRF protection)

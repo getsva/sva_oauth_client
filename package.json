@@ -4,11 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vite --mode development",
+    "dev:prod": "vite --mode production",
+    "build": "vite build --mode production",
     "build:dev": "vite build --mode development",
+    "build:prod": "vite build --mode production",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:prod": "vite preview --mode production",
+    "deploy": "npm run build && npx wrangler pages deploy dist --project-name=sva-oauth-client",
+    "deploy:prod": "npm run build && npx wrangler pages deploy dist --project-name=sva-oauth-client --env=production"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
