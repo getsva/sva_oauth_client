@@ -299,69 +299,8 @@ export const api = {
     return Array.isArray(response) ? response : (response.results || []);
   },
 
-  // Credentials - API Keys
-  getAPIKeys: async () => {
-    const response = await apiRequest<any>('/credentials/api-keys/');
-    // Handle paginated response or direct array
-    return Array.isArray(response) ? response : (response.results || []);
-  },
-
-  createAPIKey: async (data: {
-    name: string;
-    key_type?: 'server' | 'browser';
-    bound_account?: string;
-    restrictions?: string;
-    restrictions_dict?: Record<string, any>;
-  }) => {
-    return apiRequest<any>('/credentials/api-keys/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-
-  getAPIKey: async (id: number) => {
-    return apiRequest<any>(`/credentials/api-keys/${id}/`);
-  },
-
-  showAPIKey: async (id: number) => {
-    return apiRequest<any>(`/credentials/api-keys/${id}/show/`, {
-      method: 'POST',
-    });
-  },
-
-  updateAPIKey: async (id: number, data: {
-    name?: string;
-    key_type?: 'server' | 'browser';
-    bound_account?: string;
-    restrictions?: string;
-    restrictions_dict?: Record<string, any>;
-  }) => {
-    return apiRequest<any>(`/credentials/api-keys/${id}/`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  },
-
-  deleteAPIKey: async (id: number) => {
-    return apiRequest<{ message: string }>(`/credentials/api-keys/${id}/`, {
-      method: 'DELETE',
-    });
-  },
-
-  restoreAPIKey: async (id: number) => {
-    return apiRequest<any>(`/credentials/api-keys/${id}/restore/`, {
-      method: 'POST',
-    });
-  },
-
-  getDeletedAPIKeys: async () => {
-    const response = await apiRequest<any>('/credentials/api-keys/deleted/');
-    // Handle paginated response or direct array
-    return Array.isArray(response) ? response : (response.results || []);
-  },
-
   // Bulk operations
-  bulkDeleteCredentials: async (type: 'oauth_app' | 'api_key', ids: number[]) => {
+  bulkDeleteCredentials: async (type: 'oauth_app', ids: number[]) => {
     return apiRequest<{ message: string }>('/credentials/bulk-delete/', {
       method: 'POST',
       body: JSON.stringify({ type, ids }),
@@ -418,7 +357,39 @@ export const api = {
       body: JSON.stringify(data),
     });
   },
+
+  // Dashboard APIs & Services usage
+  getDashboardUsage: async (range: string = '1 day') => {
+    const encoded = encodeURIComponent(range);
+    return apiRequest<DashboardUsageResponse>(`/dashboard/usage/?range=${encoded}`);
+  },
 };
+
+// Dashboard usage response (developer-focused metrics)
+export interface DashboardUsageResponse {
+  summary: {
+    oauth_apps_count: number;
+    api_keys_count?: number;
+    api_keys_used_in_range?: number;
+    api_keys_never_used?: number;
+  };
+  new_sign_ins: {
+    series: { timestamp: string; value: number }[];
+    total: number;
+  };
+  active_sessions: number;
+  failed_authorizations: {
+    denied_count: number;
+    expired_count: number;
+    total: number;
+  };
+  usage_by_app: {
+    app_id: number;
+    app_name: string;
+    new_sign_ins: number;
+    active_sessions: number;
+  }[];
+}
 
 // Token refresh interceptor setup (for future enhancements)
 export const setupTokenRefresh = () => {

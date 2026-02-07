@@ -32,7 +32,7 @@ export const MainLayout = () => {
       >
         <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       </div>
-      <main className="flex-1 min-w-0 rounded-2xl overflow-auto ">
+      <main className="flex-1 min-w-0 overflow-auto ">
         <Outlet />
       </main>
     </div>

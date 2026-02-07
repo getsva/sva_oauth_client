@@ -27,35 +27,16 @@ interface OAuthApp {
   is_deleted: boolean;
 }
 
-interface APIKey {
-  id: number;
-  name: string;
-  key_type: string;
-  api_key?: string;
-  masked_api_key?: string;
-  bound_account: string;
-  restrictions: string;
-  restrictions_dict?: Record<string, any>;
-  created_at: string;
-  last_used_at?: string;
-  is_active: boolean;
-  is_deleted: boolean;
-}
-
 const Credentials = () => {
   const { toast } = useToast();
   const [oauthApps, setOAuthApps] = useState<OAuthApp[]>([]);
-  const [apiKeys, setAPIKeys] = useState<APIKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOAuthApps, setSelectedOAuthApps] = useState<number[]>([]);
-  const [selectedAPIKeys, setSelectedAPIKeys] = useState<number[]>([]);
   const [showDeleted, setShowDeleted] = useState(false);
   
   // Dialog states
   const [createOAuthDialogOpen, setCreateOAuthDialogOpen] = useState(false);
-  const [createAPIKeyDialogOpen, setCreateAPIKeyDialogOpen] = useState(false);
   const [showClientSecret, setShowClientSecret] = useState<Record<number, boolean>>({});
-  const [showAPIKeyValue, setShowAPIKeyValue] = useState<Record<number, boolean>>({});
   const [selectedOAuthAppDetails, setSelectedOAuthAppDetails] = useState<OAuthApp | null>(null);
   const [showOAuthAppDetails, setShowOAuthAppDetails] = useState(false);
   const [editingOAuthApp, setEditingOAuthApp] = useState<OAuthApp | null>(null);
@@ -74,13 +55,6 @@ const Credentials = () => {
     app_type: "web",
     redirect_uris: "",
   });
-  const [apiKeyForm, setAPIKeyForm] = useState({
-    name: "",
-    key_type: "server",
-    bound_account: "",
-    restrictions: "",
-  });
-
   useEffect(() => {
     fetchCredentials();
   }, [showDeleted]);
@@ -89,24 +63,14 @@ const Credentials = () => {
     try {
       setLoading(true);
       if (showDeleted) {
-        const [deletedOAuthApps, deletedAPIKeys] = await Promise.all([
-          api.getDeletedOAuthApps(),
-          api.getDeletedAPIKeys(),
-        ]);
+        const deletedOAuthApps = await api.getDeletedOAuthApps();
         setOAuthApps(Array.isArray(deletedOAuthApps) ? deletedOAuthApps : []);
-        setAPIKeys(Array.isArray(deletedAPIKeys) ? deletedAPIKeys : []);
       } else {
-        const [oauthAppsData, apiKeysData] = await Promise.all([
-          api.getOAuthApps(),
-          api.getAPIKeys(),
-        ]);
+        const oauthAppsData = await api.getOAuthApps();
         setOAuthApps(Array.isArray(oauthAppsData) ? oauthAppsData : []);
-        setAPIKeys(Array.isArray(apiKeysData) ? apiKeysData : []);
       }
     } catch (error: any) {
-      // Ensure arrays are set even on error
       setOAuthApps([]);
-      setAPIKeys([]);
       toast({
         title: "Error",
         description: error.data?.message || "Failed to fetch credentials",
@@ -182,41 +146,6 @@ const Credentials = () => {
       toast({
         title: "Error",
         description: errorMessage,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleCreateAPIKey = async () => {
-    try {
-      const newKey = await api.createAPIKey({
-        name: apiKeyForm.name,
-        key_type: apiKeyForm.key_type as "server" | "browser",
-        bound_account: apiKeyForm.bound_account,
-        restrictions: apiKeyForm.restrictions || undefined,
-      });
-      
-      toast({
-        title: "Success",
-        description: "API key created successfully",
-      });
-      
-      setCreateAPIKeyDialogOpen(false);
-      setAPIKeyForm({ name: "", key_type: "server", bound_account: "", restrictions: "" });
-      fetchCredentials();
-      
-      // Show API key in a toast
-      if (newKey.api_key) {
-        toast({
-          title: "API Key",
-          description: `Save this API key: ${newKey.api_key}`,
-          duration: 10000,
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.data?.message || "Failed to create API key",
         variant: "destructive",
       });
     }
@@ -338,23 +267,6 @@ const Credentials = () => {
   });
 
 
-  const handleDeleteAPIKey = async (id: number) => {
-    try {
-      await api.deleteAPIKey(id);
-      toast({
-        title: "Success",
-        description: "API key deleted successfully",
-      });
-      fetchCredentials();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.data?.message || "Failed to delete API key",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleRestoreOAuthApp = async (id: number) => {
     try {
       await api.restoreOAuthApp(id);
@@ -372,32 +284,11 @@ const Credentials = () => {
     }
   };
 
-  const handleRestoreAPIKey = async (id: number) => {
-    try {
-      await api.restoreAPIKey(id);
-      toast({
-        title: "Success",
-        description: "API key restored successfully",
-      });
-      fetchCredentials();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.data?.message || "Failed to restore API key",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleBulkDelete = async () => {
     try {
       if (selectedOAuthApps.length > 0) {
         await api.bulkDeleteCredentials("oauth_app", selectedOAuthApps);
         setSelectedOAuthApps([]);
-      }
-      if (selectedAPIKeys.length > 0) {
-        await api.bulkDeleteCredentials("api_key", selectedAPIKeys);
-        setSelectedAPIKeys([]);
       }
       toast({
         title: "Success",
@@ -408,24 +299,6 @@ const Credentials = () => {
       toast({
         title: "Error",
         description: error.data?.message || "Failed to delete credentials",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleShowAPIKey = async (id: number) => {
-    try {
-      const keyData = await api.showAPIKey(id);
-      setShowAPIKeyValue({ ...showAPIKeyValue, [id]: true });
-      toast({
-        title: "API Key",
-        description: `API Key: ${keyData.api_key}`,
-        duration: 10000,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.data?.message || "Failed to retrieve API key",
         variant: "destructive",
       });
     }
@@ -451,24 +324,9 @@ const Credentials = () => {
     <div className="">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Credentials</h1>
-        <p className="text-muted-foreground mt-1">Manage OAuth apps and API keys</p>
+        <p className="text-muted-foreground mt-1">Manage OAuth 2.0 credentials for your applications</p>
       </div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold text-foreground mb-1">OAuth 2.0 Client IDs</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage OAuth 2.0 credentials for your applications
-          </p>
-        </div>
-        <Dialog open={createOAuthDialogOpen} onOpenChange={setCreateOAuthDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Plus className="w-4 h-4 mr-2" />
-              Create OAuth Client
-            </Button>
-          </DialogTrigger>
-        </Dialog>
-      </div>
+
 
       <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
         <div className="flex items-start gap-3">
@@ -527,8 +385,8 @@ const Credentials = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="web">Web application</SelectItem>
-                    <SelectItem value="mobile">Mobile application</SelectItem>
-                    <SelectItem value="desktop">Desktop application</SelectItem>
+                    <SelectItem value="mobile" disabled>Mobile application (coming soon)</SelectItem>
+                    <SelectItem value="desktop" disabled>Desktop application (coming soon)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -557,80 +415,10 @@ const Credentials = () => {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={createAPIKeyDialogOpen} onOpenChange={setCreateAPIKeyDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline">
-              <Plus className="w-4 h-4 mr-2" />
-              Create API Key
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create API Key</DialogTitle>
-              <DialogDescription>
-                Create a new API key for accessing your APIs.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="key-name">Name</Label>
-                <Input
-                  id="key-name"
-                  value={apiKeyForm.name}
-                  onChange={(e) => setAPIKeyForm({ ...apiKeyForm, name: e.target.value })}
-                  placeholder="Enter API key name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="key-type">Key type</Label>
-                <Select
-                  value={apiKeyForm.key_type}
-                  onValueChange={(value) => setAPIKeyForm({ ...apiKeyForm, key_type: value })}
-                >
-                  <SelectTrigger id="key-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="server">Server key</SelectItem>
-                    <SelectItem value="browser">Browser key</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="key-account">Bound account (optional)</Label>
-                <Input
-                  id="key-account"
-                  value={apiKeyForm.bound_account}
-                  onChange={(e) => setAPIKeyForm({ ...apiKeyForm, bound_account: e.target.value })}
-                  placeholder="Account or email"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="key-restrictions">Restrictions (optional)</Label>
-                <Textarea
-                  id="key-restrictions"
-                  value={apiKeyForm.restrictions}
-                  onChange={(e) => setAPIKeyForm({ ...apiKeyForm, restrictions: e.target.value })}
-                  placeholder='{"apis": ["api1", "api2"]}'
-                  rows={3}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateAPIKeyDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreateAPIKey} disabled={!apiKeyForm.name}>
-                Create
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
         <Button
           variant="outline"
           onClick={handleBulkDelete}
-          disabled={selectedOAuthApps.length === 0 && selectedAPIKeys.length === 0}
+          disabled={selectedOAuthApps.length === 0}
         >
           <Trash2 className="w-4 h-4 mr-2" />
           Delete
@@ -642,144 +430,11 @@ const Credentials = () => {
       </div>
 
       <p className="text-sm text-muted-foreground mb-4">
-        Create credentials to access your enabled APIs.{" "}
+        Create OAuth clients to enable sign-in for your applications.{" "}
         <a href="#" className="text-primary hover:underline">
           Learn more
         </a>
       </p>
-
-      {/* API Keys Section */}
-      <div className="bg-card border border-border rounded-lg overflow-hidden mb-8">
-        <div className="px-6 py-4 border-b border-border">
-          <h2 className="text-base font-medium text-foreground">API Keys</h2>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <input
-                  type="checkbox"
-                  className="rounded border-border"
-                  checked={Array.isArray(apiKeys) && selectedAPIKeys.length === apiKeys.length && apiKeys.length > 0}
-                  onChange={(e) => {
-                    if (e.target.checked && Array.isArray(apiKeys)) {
-                      setSelectedAPIKeys(apiKeys.map((k) => k.id));
-                    } else {
-                      setSelectedAPIKeys([]);
-                    }
-                  }}
-                />
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                </div>
-              </TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Bound account</TableHead>
-              <TableHead>
-                <div className="flex items-center gap-1">
-                  Creation date
-                  <ChevronDown className="w-4 h-4" />
-                </div>
-              </TableHead>
-              <TableHead>Restrictions</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  Loading...
-                </TableCell>
-              </TableRow>
-            ) : !Array.isArray(apiKeys) || apiKeys.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  No API keys to display
-                </TableCell>
-              </TableRow>
-            ) : (
-              apiKeys.map((key) => (
-                <TableRow key={key.id}>
-                  <TableCell>
-                    <input
-                      type="checkbox"
-                      className="rounded border-border"
-                      checked={selectedAPIKeys.includes(key.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedAPIKeys([...selectedAPIKeys, key.id]);
-                        } else {
-                          setSelectedAPIKeys(selectedAPIKeys.filter((id) => id !== key.id));
-                        }
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                  </TableCell>
-                  <TableCell>
-                    <a href="#" className="text-primary hover:underline">
-                      {key.name}
-                    </a>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {key.bound_account || "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(key.created_at)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {key.restrictions_dict && Object.keys(key.restrictions_dict).length > 0
-                      ? `${Object.keys(key.restrictions_dict).length} restriction(s)`
-                      : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {showDeleted ? (
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="text-primary h-auto p-0"
-                          onClick={() => handleRestoreAPIKey(key.id)}
-                        >
-                          Restore
-                        </Button>
-                      ) : (
-                        <>
-                          <Button
-                            variant="link"
-                            size="sm"
-                            className="text-primary h-auto p-0"
-                            onClick={() => handleShowAPIKey(key.id)}
-                          >
-                            Show key
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem onClick={() => handleDeleteAPIKey(key.id)}>
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
 
       {/* OAuth Apps Section */}
       <div className="bg-card border border-border rounded-lg overflow-hidden mb-8">
@@ -1222,8 +877,8 @@ const Credentials = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="web">Web application</SelectItem>
-                  <SelectItem value="mobile">Mobile application</SelectItem>
-                  <SelectItem value="desktop">Desktop application</SelectItem>
+                  <SelectItem value="mobile" disabled>Mobile application (coming soon)</SelectItem>
+                  <SelectItem value="desktop" disabled>Desktop application (coming soon)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
