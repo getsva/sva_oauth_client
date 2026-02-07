@@ -3,10 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Mail, Lock, ArrowRight, ArrowLeft, Eye, EyeOff, Github, Chrome, Sparkles } from "lucide-react";
+import { Mail, Lock, ArrowRight, ArrowLeft, Eye, EyeOff, Github, Chrome } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { initiateGoogleOAuth, initiateGitHubOAuth } from "@/lib/oauth";
 import { toast } from "sonner";
+import logo_light from "@/assets/logo_light.png";
+import logo_dark from "@/assets/logo_dark.png";
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -16,10 +18,9 @@ const Login = () => {
   const navigate = useNavigate();
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
 
-  // Redirect to dashboard if already authenticated
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate]);
 
@@ -28,27 +29,23 @@ const Login = () => {
     setIsLoading(true);
     try {
       await login(email, password);
-    } catch (error) {
-      // Error is handled in AuthContext
+    } catch {
+      // Error handled in AuthContext
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleOAuthLogin = (provider: 'google' | 'github') => {
+  const handleOAuthLogin = (provider: "google" | "github") => {
     try {
-      if (provider === 'google') {
-        initiateGoogleOAuth();
-      } else if (provider === 'github') {
-        initiateGitHubOAuth();
-      }
-    } catch (error: any) {
-      console.error(`Failed to initiate ${provider} OAuth:`, error);
-      toast.error(error.message || `Failed to start ${provider} authentication`);
+      if (provider === "google") initiateGoogleOAuth();
+      else if (provider === "github") initiateGitHubOAuth();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : `Failed to start ${provider} authentication`;
+      toast.error(msg);
     }
   };
 
-  // Show loading while checking auth status
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -60,183 +57,61 @@ const Login = () => {
     );
   }
 
-  // Don't render login page if authenticated (will redirect)
-  if (isAuthenticated) {
-    return null;
-  }
+  if (isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Side - Graphics/Illustration */}
-      <div className="hidden lg:flex lg:flex-1 relative overflow-hidden bg-gradient-hero">
-        {/* Animated background elements */}
-        <div className="absolute inset-0">
-          <div className="absolute top-0 left-0 h-96 w-96 rounded-full bg-primary/30 blur-[120px] animate-pulse" />
-          <div className="absolute bottom-0 right-0 h-96 w-96 rounded-full bg-primary/20 blur-[120px] animate-pulse delay-1000" />
-          <div className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[140px] animate-pulse delay-2000" />
-        </div>
-
-        {/* SVG Illustration */}
-        <div className="relative z-10 flex items-center justify-center h-full p-12">
-          <div className="w-full max-w-2xl">
-            <svg
-              viewBox="0 0 800 600"
-              className="w-full h-auto"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              {/* Animated circles */}
-              <circle
-                cx="200"
-                cy="150"
-                r="80"
-                fill="url(#gradient1)"
-                opacity="0.6"
-                className="animate-pulse"
-              >
-                <animate
-                  attributeName="r"
-                  values="80;100;80"
-                  dur="3s"
-                  repeatCount="indefinite"
-                />
-              </circle>
-              <circle
-                cx="600"
-                cy="450"
-                r="100"
-                fill="url(#gradient2)"
-                opacity="0.5"
-                className="animate-pulse delay-1000"
-              >
-                <animate
-                  attributeName="r"
-                  values="100;120;100"
-                  dur="4s"
-                  repeatCount="indefinite"
-                />
-              </circle>
-              
-              {/* Security Shield */}
-              <g transform="translate(400, 300)">
-                <path
-                  d="M 0 -80 L 60 -30 L 60 40 L 0 90 L -60 40 L -60 -30 Z"
-                  fill="url(#gradient3)"
-                  opacity="0.8"
-                  className="drop-shadow-2xl"
-                />
-                <circle cx="0" cy="0" r="25" fill="currentColor" className="text-primary-foreground" />
-                <path
-                  d="M -15 -5 L -5 5 L 15 -15"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-background"
-                />
-              </g>
-
-              {/* Floating particles */}
-              {[...Array(12)].map((_, i) => {
-                const angle = (i * 360) / 12;
-                const radius = 200;
-                const x = 400 + radius * Math.cos((angle * Math.PI) / 180);
-                const y = 300 + radius * Math.sin((angle * Math.PI) / 180);
-                return (
-                  <circle
-                    key={i}
-                    cx={x}
-                    cy={y}
-                    r="8"
-                    fill="url(#gradient4)"
-                    opacity="0.6"
-                  >
-                    <animate
-                      attributeName="opacity"
-                      values="0.6;1;0.6"
-                      dur={`${2 + i * 0.3}s`}
-                      repeatCount="indefinite"
-                    />
-                  </circle>
-                );
-              })}
-
-              {/* Gradient definitions */}
-              <defs>
-                <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.8" />
-                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.2" />
-                </linearGradient>
-                <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.6" />
-                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.1" />
-                </linearGradient>
-                <linearGradient id="gradient3" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" />
-                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.7" />
-                </linearGradient>
-                <linearGradient id="gradient4" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" />
-                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.5" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-        </div>
-
-        {/* Content overlay */}
-        <div className="absolute inset-0 z-20 flex flex-col justify-end p-12">
-          <div className="max-w-md">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-primary">
-                <Sparkles className="h-7 w-7 text-primary-foreground" />
-              </div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
-                SVA OAuth
-              </h2>
-            </div>
-            <h3 className="text-2xl font-semibold mb-2">Welcome Back!</h3>
-            <p className="text-muted-foreground text-lg">
-              Secure authentication made simple. Sign in to access your account and continue your journey.
-            </p>
-          </div>
+    <div className="min-h-screen flex flex-col lg:flex-row">
+      {/* Left – Branding (hidden on small screens) */}
+      <div className="hidden lg:flex lg:flex-1 flex-col justify-between bg-gradient-to-br from-primary/10 via-background to-primary/5 dark:from-primary/20 dark:via-background dark:to-primary/10 p-10 xl:p-14">
+        <Link to="/" className="flex items-center gap-2">
+          <img src={logo_light} alt="SVA" className="h-9 w-9 object-contain block dark:hidden" />
+          <img src={logo_dark} alt="SVA" className="h-9 w-9 object-contain hidden dark:block" />
+          <span className="font-semibold text-foreground">SVA OAuth</span>
+        </Link>
+        <div>
+          <h2 className="text-2xl xl:text-3xl font-bold text-foreground mb-2">Welcome back</h2>
+          <p className="text-muted-foreground max-w-sm">
+            Sign in to access the developer console and manage your OAuth apps.
+          </p>
         </div>
       </div>
 
-      {/* Right Side - Login Form */}
-      <div className="flex-1 flex flex-col bg-background">
-        {/* Header with Back Button */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
-            asChild
-            className="flex items-center gap-2 hover:bg-primary/0 hover:text-primary"
-          >
+      {/* Right – Form */}
+      <div className="flex-1 flex flex-col bg-background min-h-screen">
+        <header className="flex items-center justify-between p-4 lg:p-6">
+          <Button variant="ghost" asChild className="gap-2 text-muted-foreground hover:text-foreground">
             <Link to="/">
               <ArrowLeft className="h-4 w-4" />
-              Back to Home
+              <span className="hidden sm:inline">Back</span>
             </Link>
           </Button>
+          <div className="flex items-center gap-2 lg:hidden">
+            <img src={logo_light} alt="SVA" className="h-8 w-8 object-contain block dark:hidden" />
+            <img src={logo_dark} alt="SVA" className="h-8 w-8 object-contain hidden dark:block" />
+            <span className="font-semibold text-sm">SVA OAuth</span>
+          </div>
           <ThemeToggle />
-        </div>
+        </header>
 
-        {/* Form Container */}
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="w-full">
+        <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
+          <div className="w-full max-w-md">
+            <div className="lg:hidden mb-8">
+              <h1 className="text-2xl font-bold text-foreground">Sign in</h1>
+              <p className="text-muted-foreground mt-1 text-sm">Access your developer account</p>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Email Input */}
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email Address
+                <label htmlFor="email" className="text-sm font-medium text-foreground">
+                  Email
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="you@example.com"
-                    className="pl-12 h-14 text-base bg-background border-2 focus:border-primary transition-all"
+                    className="pl-10 h-11 bg-background"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -244,26 +119,22 @@ const Login = () => {
                 </div>
               </div>
 
-              {/* Password Input */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="password" className="text-sm font-medium">
+                  <label htmlFor="password" className="text-sm font-medium text-foreground">
                     Password
                   </label>
-                  <Link
-                    to="#"
-                    className="text-sm text-primary hover:underline transition-colors"
-                  >
+                  <Link to="#" className="text-xs text-primary hover:underline">
                     Forgot password?
                   </Link>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
-                    className="pl-12 pr-12 h-14 text-base bg-background border-2 focus:border-primary transition-all"
+                    className="pl-10 pr-10 h-11 bg-background"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -271,79 +142,59 @@ const Login = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
 
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={isLoading}
-                variant="hero"
-                size="xl"
-                className="w-full h-14"
-              >
-                {isLoading ? "Signing in..." : "Sign In"}
-                <ArrowRight className="ml-2 h-5 w-5" />
+              <Button type="submit" disabled={isLoading} className="w-full h-11 font-medium">
+                {isLoading ? "Signing in…" : "Sign in"}
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
 
-            {/* Divider */}
-            <div className="relative my-8">
+            <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border"></div>
+                <div className="w-full border-t border-border" />
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-background px-4 text-muted-foreground">Or continue with</span>
+              <div className="relative flex justify-center">
+                <span className="bg-background px-3 text-xs text-muted-foreground">or continue with</span>
               </div>
             </div>
 
-            {/* Social Login */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <Button
+                type="button"
                 variant="outline"
-                className="h-14 border-2 hover:bg-primary/10 hover:border-primary transition-all"
-                onClick={() => handleOAuthLogin('github')}
+                className="h-11"
+                onClick={() => handleOAuthLogin("github")}
               >
-                <Github className="mr-2 h-5 w-5" />
+                <Github className="mr-2 h-4 w-4" />
                 GitHub
               </Button>
               <Button
+                type="button"
                 variant="outline"
-                className="h-14 border-2 hover:bg-primary/10 hover:border-primary transition-all"
-                onClick={() => handleOAuthLogin('google')}
+                className="h-11"
+                onClick={() => handleOAuthLogin("google")}
               >
-                <Chrome className="mr-2 h-5 w-5" />
+                <Chrome className="mr-2 h-4 w-4" />
                 Google
               </Button>
             </div>
 
-            {/* Sign Up Link */}
-            <div className="text-center text-sm pt-4">
-              <span className="text-muted-foreground">Don't have an account? </span>
-              <Link
-                to="/signup"
-                className="font-semibold text-primary hover:underline transition-colors"
-              >
+            <p className="text-center text-sm text-muted-foreground mt-6">
+              Don&apos;t have an account?{" "}
+              <Link to="/signup" className="font-medium text-primary hover:underline">
                 Sign up
               </Link>
-            </div>
+            </p>
           </div>
-        </div>
+        </main>
       </div>
-
-      <style>{`
-        .delay-1000 {
-          animation-delay: 1s;
-        }
-        
-        .delay-2000 {
-          animation-delay: 2s;
-        }
-      `}</style>
     </div>
   );
 };
