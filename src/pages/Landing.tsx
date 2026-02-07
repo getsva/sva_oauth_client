@@ -2,8 +2,10 @@ import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { ArrowRight, Zap, Shield, Rocket, Sparkles, Github, Twitter, Linkedin, Mail, Globe } from "lucide-react";
+import { ArrowRight, Zap, Shield, Rocket, Github, Twitter, Linkedin, Mail, Globe } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import logo_light from "@/assets/logo_light.png";
+import logo_dark from "@/assets/logo_dark.png";
 
 const Landing = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -36,9 +38,8 @@ const Landing = () => {
 
       <nav className="relative z-10 flex items-center justify-between p-4 md:p-6">
         <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary">
-            <Sparkles className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <img src={logo_light} alt="SVA" className="h-10 w-10 object-contain block dark:hidden" />
+          <img src={logo_dark} alt="SVA" className="h-10 w-10 object-contain hidden dark:block" />
           <span className="text-xl font-semibold text-foreground">SVA OAuth</span>
         </div>
         <div className="flex items-center gap-2">
@@ -108,9 +109,8 @@ const Landing = () => {
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary">
-                  <Sparkles className="h-5 w-5 text-primary-foreground" />
-                </div>
+                <img src={logo_light} alt="SVA" className="h-10 w-10 object-contain block dark:hidden" />
+                <img src={logo_dark} alt="SVA" className="h-10 w-10 object-contain hidden dark:block" />
                 <span className="font-semibold text-foreground">SVA OAuth</span>
               </div>
               <p className="text-sm text-muted-foreground max-w-xs">

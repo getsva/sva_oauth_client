@@ -10,18 +10,20 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { 
-  Plus, 
-  Edit, 
-  Eye, 
-  CheckCircle2, 
-  XCircle, 
+import {
+  Plus,
+  Edit,
+  Eye,
+  CheckCircle2,
+  XCircle,
   AlertCircle,
+  AlertTriangle,
   ExternalLink,
   Trash2,
   Save,
   Info,
   Shield,
+  ShieldCheck,
   Settings,
   FileText,
   Mail,
@@ -38,13 +40,21 @@ import {
   Zap,
   Palette,
   Languages,
-  Bell
+  Bell,
+  User,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  X
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { identityBlocks, blocksByCategory, BlockType, verificationBlocks, VerificationBlockType } from "@/lib/identityBlocks";
-import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import logo_light from "@/assets/logo_light.png";
+import logo_dark from "@/assets/logo_dark.png";
 
 interface OAuthApp {
   id: number;
@@ -86,16 +96,23 @@ const OAuthConsent = () => {
   const [scopes, setScopes] = useState<Array<{ scope: string; description: string; reason: string }>>([]);
   const [newScope, setNewScope] = useState({ scope: '', description: '', reason: '' });
   const [hasChanges, setHasChanges] = useState(false);
-  const [selectedBlocks, setSelectedBlocks] = useState<Array<{ 
-    type: BlockType | VerificationBlockType; 
+  const [selectedBlocks, setSelectedBlocks] = useState<Array<{
+    type: BlockType | VerificationBlockType;
     reason: string;
     id: string;
   }>>([]);
   const [blockPickerOpen, setBlockPickerOpen] = useState(false);
+  const [blockLibraryCategory, setBlockLibraryCategory] = useState<string>("all");
+  const [blockLibrarySearch, setBlockLibrarySearch] = useState("");
+  const [appLogoLoadError, setAppLogoLoadError] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    setAppLogoLoadError(false);
+  }, [formData.app_logo]);
 
   useEffect(() => {
     // Auto-select first app if only one exists
@@ -124,11 +141,11 @@ const OAuthConsent = () => {
     setSelectedAppId(appId);
     setActiveTab("configuration");
     setHasChanges(false);
-    
+
     try {
       const consentScreen = await api.getConsentScreen(appId);
       setFormData(consentScreen);
-      
+
       // Convert scope_reasons to array format
       const scopesArray: Array<{ scope: string; description: string; reason: string }> = [];
       if (consentScreen.scope_reasons) {
@@ -150,16 +167,16 @@ const OAuthConsent = () => {
         });
       }
       setScopes(scopesArray);
-      
+
       // Initialize selected blocks from scope_reasons
       const blocksArray: Array<{ type: BlockType | VerificationBlockType; reason: string; id: string }> = [];
-      
+
       if (consentScreen.scope_reasons) {
         Object.entries(consentScreen.scope_reasons).forEach(([scope, info]) => {
           // Check if scope is a valid block type
           const isIdentityBlock = scope in identityBlocks;
           const isVerificationBlock = scope in verificationBlocks;
-          
+
           if (isIdentityBlock || isVerificationBlock) {
             const scopeInfo = info as { description?: string; reason?: string };
             blocksArray.push({
@@ -177,6 +194,11 @@ const OAuthConsent = () => {
         const app = oauthApps.find(a => a.id === appId);
         setFormData({
           app_name: app?.name || '',
+          app_description: '',
+          app_logo: '',
+          application_homepage: '',
+          privacy_policy_url: '',
+          terms_of_service_url: '',
           support_email: '',
           developer_contact_email: '',
           publishing_status: 'draft',
@@ -264,7 +286,7 @@ const OAuthConsent = () => {
 
       // Convert selected blocks to scope_reasons format
       const scopeReasons: Record<string, { description: string; reason: string }> = {};
-      
+
       // Add selected blocks (identity and verification)
       selectedBlocks.forEach(({ type, reason }) => {
         if (type in identityBlocks) {
@@ -281,7 +303,7 @@ const OAuthConsent = () => {
           };
         }
       });
-      
+
       // Merge with custom scopes if any
       scopes.forEach(({ scope, description, reason }) => {
         if (scope && scope.trim() && !(scope in scopeReasons)) {
@@ -369,7 +391,7 @@ const OAuthConsent = () => {
       toast.error('This block is already added');
       return;
     }
-    
+
     setSelectedBlocks([...selectedBlocks, {
       type: blockType,
       reason: '',
@@ -385,7 +407,7 @@ const OAuthConsent = () => {
   };
 
   const handleUpdateBlockReason = (id: string, reason: string) => {
-    setSelectedBlocks(selectedBlocks.map(b => 
+    setSelectedBlocks(selectedBlocks.map(b =>
       b.id === id ? { ...b, reason } : b
     ));
     setHasChanges(true);
@@ -413,39 +435,24 @@ const OAuthConsent = () => {
   const selectedApp = oauthApps.find(a => a.id === selectedAppId);
   const consentScreen = getConsentScreenForApp(selectedAppId || 0);
 
-  // Preview component
+  // Preview component – matches sva_client Consent.tsx UI (Sign in with SVA style)
   const ConsentPreview = () => {
-    // Build preview scopes from selected blocks and custom scopes
     const previewScopes: Array<{ scope: string; description: string; reason: string; icon?: string }> = [];
-    
-    // Add selected blocks (identity and verification)
     selectedBlocks.forEach(({ type, reason }) => {
       if (type in identityBlocks) {
         const block = identityBlocks[type as BlockType];
-        previewScopes.push({
-          scope: block.title,
-          description: block.description,
-          reason: reason,
-          icon: block.icon
-        });
+        previewScopes.push({ scope: block.title, description: block.description, reason: reason, icon: block.icon });
       } else if (type in verificationBlocks) {
         const block = verificationBlocks[type as VerificationBlockType];
-        previewScopes.push({
-          scope: block.title,
-          description: block.description,
-          reason: reason,
-          icon: block.icon
-        });
+        previewScopes.push({ scope: block.title, description: block.description, reason: reason, icon: block.icon });
       }
     });
-    
-    // Don't show default scopes if nothing is selected
-    // Only show blocks that the developer has actually selected
-    
+
+    // Logo URL from Setup → Branding & app info (developer-set)
     const previewData = {
       app_name: formData.app_name || selectedApp?.name || 'Your Application',
       app_description: formData.app_description || '',
-      app_logo: formData.app_logo || '',
+      app_logo: (formData.app_logo || '').trim(),
       application_homepage: formData.application_homepage || '',
       privacy_policy_url: formData.privacy_policy_url || '',
       terms_of_service_url: formData.terms_of_service_url || '',
@@ -459,114 +466,199 @@ const OAuthConsent = () => {
       mobile: 'max-w-sm mx-auto'
     };
 
-  return (
-      <div className={`${deviceWidths[previewDevice]} transition-all duration-300`}>
-        <div className="bg-gradient-to-br from-card to-background border border-border rounded-2xl p-8 mb-6 shadow-card">
-          <div className="bg-card rounded-xl p-6 border border-border">
-            {/* Logo and App Name */}
-            <div className="text-center mb-6">
-              {previewData.app_logo && (
-                <img 
-                  src={previewData.app_logo} 
-                  alt={previewData.app_name}
-                  className="w-16 h-16 mx-auto mb-4 rounded-xl object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              )}
-              <h1 className="text-2xl font-semibold text-foreground mb-2">
-                {previewData.app_name}
-              </h1>
-              {previewData.app_description && (
-                <p className="text-sm text-muted-foreground">{previewData.app_description}</p>
-              )}
-      </div>
+    const isMobile = previewDevice === 'mobile';
+    const isTablet = previewDevice === 'tablet';
 
-            {/* App Info */}
-            <div className="bg-muted/50 rounded-xl p-4 mb-6 border border-border">
-              <div className="font-medium text-foreground mb-1">{previewData.app_name}</div>
-              <div className="text-sm text-muted-foreground">wants to access your account</div>
-              {previewData.application_homepage && (
-                <a 
-                  href={previewData.application_homepage} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline mt-2 inline-block"
-                >
-                  Visit application →
-                </a>
-              )}
+    const headerPad = isMobile ? 'px-4 pt-4 pb-3' : isTablet ? 'px-6 pt-5 pb-3' : 'px-8 pt-6 pb-4';
+    const panelPad = isMobile ? 'px-4 py-4' : isTablet ? 'px-6 py-5' : 'px-8 py-6';
+    const logoSize = isMobile ? 'h-12 w-12' : 'h-16 w-16';
+    const plusSize = isMobile ? 'h-8 w-8' : 'h-10 w-10';
+    const headingSize = isMobile ? 'text-xl' : 'text-2xl';
+    const aboutPad = isMobile ? 'p-3' : 'p-4';
+    const footerPad = isMobile ? 'px-4 py-3' : isTablet ? 'px-6 py-3' : 'px-8 py-4';
+    const footerLayout = isMobile ? 'flex-col gap-2 items-center text-center' : 'flex-row items-center justify-between';
+    const footerText = isMobile ? 'text-[10px]' : 'text-xs';
+    const borderCls = 'border-gray-200 dark:border-[#1E3A5F]';
+
+    const leftPanelCls = `${panelPad} ${!isMobile ? 'border-r ' : ''}${borderCls} flex flex-col`;
+    const gridCls = isMobile ? 'flex flex-col' : 'grid grid-cols-2 gap-0';
+
+    return (
+      <div className={`min-h-[400px] sm:min-h-[520px] bg-[#F5F7FA] dark:bg-[#0A1929] rounded-lg ${deviceWidths[previewDevice]} transition-all duration-300`}>
+        <div className="bg-white dark:bg-[#132F4C] rounded-lg shadow-lg border border-gray-200 dark:border-[#1E3A5F] overflow-hidden">
+          {/* Header: Sign in with SVA */}
+          <div className={`${headerPad} border-b ${borderCls}`}>
+            <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+              <span className="font-medium">Sign in with SVA</span>
             </div>
-
-            {/* Scopes/Blocks */}
-            {previewData.scopes.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-foreground mb-4">
-                This application will be able to:
-              </h3>
-              <div className="space-y-3">
-                {previewData.scopes.map((scope, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 bg-muted/30 rounded-xl border border-border">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center mt-0.5 flex-shrink-0">
-                      {scope.icon ? (
-                        <span className="text-lg">{scope.icon}</span>
-                      ) : (
-                        <CheckCircle2 className="w-4 h-4 text-primary" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-sm text-foreground mb-1">{scope.scope}</div>
-                      <div className="text-xs text-muted-foreground">{scope.description}</div>
-                      {scope.reason && (
-                        <div className="text-xs text-muted-foreground italic mt-1">
-                          Reason: {scope.reason}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-3 mb-4">
-              <button className="flex-1 px-4 py-2 bg-muted text-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors border border-border">
-                Deny
-              </button>
-              <button className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors shadow-glow">
-                Authorize
-              </button>
           </div>
 
-            {/* Footer Links */}
-            {(previewData.privacy_policy_url || previewData.terms_of_service_url || previewData.support_email) && (
-              <div className="pt-4 border-t border-border text-xs text-muted-foreground">
-                <div className="flex flex-wrap gap-4 justify-center mb-2">
+          <div className={gridCls}>
+            {/* Left panel */}
+            <div className={leftPanelCls}>
+              <div className={isMobile ? 'mb-2' : 'mb-3'}>
+                {previewData.app_logo ? (
+                  <div className={`flex items-center gap-2 ${isTablet ? 'gap-2.5' : ''} ${!isMobile ? 'gap-3' : ''} align-middle flex-wrap`}>
+                    <img
+                      src={logo_light}
+                      alt="SVA Logo"
+                      className={`${logoSize} object-contain block dark:hidden shrink-0`}
+                    />
+                    <img
+                      src={logo_dark}
+                      alt="SVA Logo"
+                      className={`${logoSize} object-contain hidden dark:block shrink-0`}
+                    />
+                    <Plus className={`${plusSize} text-gray-400 rounded-lg object-contain shrink-0`} />
+                    {appLogoLoadError ? (
+                      <div className={`${logoSize} rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 text-lg font-semibold text-muted-foreground ${isMobile ? 'text-base' : ''}`}>
+                        {(previewData.app_name || 'A').charAt(0).toUpperCase()}
+                      </div>
+                    ) : (
+                      <img
+                        src={previewData.app_logo}
+                        alt={`${previewData.app_name} logo`}
+                        className={`${logoSize} rounded-lg object-contain shrink-0`}
+                        onError={() => setAppLogoLoadError(true)}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div className={`flex items-center gap-2 ${!isMobile ? 'gap-3' : ''}`}>
+                    <img
+                      src={logo_light}
+                      alt="SVA Logo"
+                      className={`${logoSize} object-contain block dark:hidden shrink-0`}
+                    />
+                    <img
+                      src={logo_dark}
+                      alt="SVA Logo"
+                      className={`${logoSize} object-contain hidden dark:block shrink-0`}
+                    />
+                  </div>
+                )}
+                <h1 className={`${headingSize} font-normal text-gray-900 dark:text-white mt-2`}>
+                  Sign in to {previewData.app_name}
+                </h1>
+              </div>
+
+              {/* Account placeholder */}
+              <div className={isMobile ? 'py-2' : 'p-3 px-0'}>
+                <div className={`border border-gray-300 dark:border-[#1E3A5F] rounded-md flex items-center justify-between min-w-0 cursor-pointer ${isMobile ? 'p-2' : 'p-2'}`}>
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <div className={`rounded-full bg-gray-200 dark:bg-[#1E3A5F] flex items-center justify-center shrink-0 ${isMobile ? 'h-9 w-9' : 'h-10 w-10'}`}>
+                      <User className={isMobile ? 'h-4 w-4' : 'h-5 w-5'} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white truncate">Your account</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">user@example.com</div>
+                    </div>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                </div>
+              </div>
+
+              {/* About Sign in with SVA */}
+              <div className={isMobile ? 'mt-4 pt-4' : 'mt-auto pt-6'}>
+                <div className={`${aboutPad} rounded-lg border border-[#00D09C]/20 bg-[#00D09C]/5 dark:bg-[#00D09C]/10`}>
+                  <div className={`flex items-start gap-2 ${!isMobile ? 'gap-3' : ''} mb-2 ${!isMobile ? 'mb-3' : ''}`}>
+                    <ShieldCheck className={`text-[#00D09C] flex-shrink-0 mt-0.5 ${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">About Sign in with SVA</h3>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed mb-2">
+                        SVA uses <strong>zero-knowledge encryption</strong> to protect your data. Your information is encrypted and only you can decrypt it. We never see your plaintext data.
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`flex items-start gap-2 ${!isMobile ? 'gap-3' : ''} pt-2 border-t border-[#00D09C]/20`}>
+                    <AlertTriangle className={`text-amber-500 flex-shrink-0 mt-0.5 ${isMobile ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} />
+                    <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                      <strong className="text-amber-600 dark:text-amber-400">Important:</strong> Review the permissions below carefully. Only approve data you&apos;re comfortable sharing with <span className="font-medium">{previewData.app_name}</span>. You can revoke access anytime in your SVA settings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right panel */}
+            <div className={`${panelPad} ${isMobile ? 'border-t ' : ''}${borderCls}`}>
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 sm:mb-4">
+                <span className="font-medium">{previewData.app_name}</span> is requesting access to:
+              </p>
+
+              {previewData.scopes.length > 0 ? (
+                <div className={`space-y-2 ${!isMobile ? 'space-y-3' : ''} mb-4 sm:mb-6`}>
+                  {previewData.scopes.map((scope, index) => (
+                    <div key={index} className="flex items-start gap-2 sm:gap-3 text-sm">
+                      <div className="mt-0.5 text-gray-600 dark:text-gray-400 shrink-0">
+                        {scope.icon ? <span className="text-base">{scope.icon}</span> : <ShieldCheck className="h-4 w-4" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium text-gray-900 dark:text-white">{scope.scope}</span>
+                          <Badge variant="outline" className="text-xs h-4 px-1.5 bg-[#00D09C]/10 text-[#00D09C] border-[#00D09C]/20 shrink-0">
+                            Selected
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{scope.description}</p>
+                        {scope.reason && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 italic">Why: {scope.reason}</p>}
+                      </div>
+                      <Switch checked className="mt-0.5 pointer-events-none opacity-80 shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 sm:mb-6">No permissions requested.</p>
+              )}
+
+              {/* Privacy Policy and Terms */}
+              <div className={`text-xs text-gray-500 dark:text-gray-400 space-y-1.5 sm:space-y-2 mb-4 sm:mb-6`}>
+                <p>
+                  Review {previewData.app_name}&apos;s{' '}
                   {previewData.privacy_policy_url && (
-                    <a href={previewData.privacy_policy_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    <a href={previewData.privacy_policy_url} target="_blank" rel="noopener noreferrer" className="text-[#00D09C] hover:underline">
                       Privacy Policy
                     </a>
                   )}
+                  {previewData.privacy_policy_url && previewData.terms_of_service_url && ' and '}
                   {previewData.terms_of_service_url && (
-                    <a href={previewData.terms_of_service_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    <a href={previewData.terms_of_service_url} target="_blank" rel="noopener noreferrer" className="text-[#00D09C] hover:underline">
                       Terms of Service
                     </a>
                   )}
-                </div>
-                {previewData.support_email && (
-                  <div className="text-center">
-                    Support: <a href={`mailto:${previewData.support_email}`} className="text-primary hover:underline">
-                      {previewData.support_email}
-                    </a>
-                  </div>
-                )}
+                  {' '}to understand how {previewData.app_name} will process and protect your data.
+                </p>
+                <p>
+                  To make changes at any time, go to your{' '}
+                  <a href="#" className="text-[#00D09C] hover:underline">SVA Account</a>.
+                </p>
+                <p>
+                  <a href="#" className="text-[#00D09C] hover:underline">Learn more about Sign in with SVA</a>.
+                </p>
               </div>
-            )}
 
-            <div className="text-xs text-muted-foreground text-center mt-4">
-              Redirecting to: {selectedApp?.client_id || 'your-app.com'}
+              {/* Action buttons */}
+              <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-200 dark:border-[#1E3A5F]">
+                <Button variant="outline" disabled className="flex-1 border-gray-300 dark:border-[#1E3A5F] text-sm">
+                  Cancel
+                </Button>
+                <Button disabled className="flex-1 bg-[#00D09C] hover:bg-[#00B88A] text-white text-sm">
+                  Continue
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className={`${footerPad} border-t ${borderCls} bg-gray-50 dark:bg-[#0A1929] flex ${footerLayout} ${footerText} text-gray-500 dark:text-gray-400`}>
+            <div className="flex items-center gap-1">
+              <span className={isMobile ? 'text-[10px]' : ''}>English (United States)</span>
+              <ChevronDown className="h-3 w-3 shrink-0" />
+            </div>
+            <div className={`flex items-center ${isMobile ? 'gap-2' : 'gap-4'}`}>
+              <a href="#" className="hover:underline">Help</a>
+              <a href="#" className="hover:underline">Privacy</a>
+              <a href="#" className="hover:underline">Terms</a>
             </div>
           </div>
         </div>
@@ -576,10 +668,10 @@ const OAuthConsent = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[50vh]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary border-t-transparent mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading consent screens…</p>
         </div>
       </div>
     );
@@ -587,12 +679,12 @@ const OAuthConsent = () => {
 
   if (oauthApps.length === 0) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
-        <Alert>
+      <div className="max-w-lg mx-auto pt-8">
+        <Alert className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            No OAuth apps found. Please create an OAuth app first from the{" "}
-            <a href="/credentials" className="text-primary hover:underline font-medium">Credentials</a> page.
+            No OAuth apps yet. Create one from the{" "}
+            <a href="/credentials" className="font-medium text-primary hover:underline">Credentials</a> page, then come back to set up the consent screen.
           </AlertDescription>
         </Alert>
       </div>
@@ -600,127 +692,125 @@ const OAuthConsent = () => {
   }
 
   return (
-    <div className="">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">OAuth Consent Screen</h1>
-            <p className="text-muted-foreground">
-              Configure and preview how your OAuth application appears to users
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {hasChanges && (
-              <Badge variant="outline" className="bg-yellow-50 text-yellow-800 border-yellow-200">
-                <RefreshCw className="w-3 h-3 mr-1" />
-                Unsaved changes
-              </Badge>
-            )}
-            <Button onClick={handleSave} disabled={!selectedAppId || !hasChanges} className="gap-2">
-              <Save className="w-4 h-4" />
-              Save Changes
-            </Button>
-          </div>
-          </div>
+    <div className="space-y-8 pb-12">
+      {/* Page header: title + app selector + save */}
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+            Consent screen
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Control how your app and requested permissions are shown to users when they sign in.
+          </p>
         </div>
-
-      <div className="grid grid-cols-12 gap-6">
-        {/* Left Sidebar - App Selection */}
-        <div className="col-span-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">OAuth Applications</CardTitle>
-              <CardDescription>Select an app to configure</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="space-y-1">
-                {oauthApps.map((app) => {
-                  const screen = getConsentScreenForApp(app.id);
-                  const isSelected = selectedAppId === app.id;
-                  return (
-                    <button
-                      key={app.id}
-                      onClick={() => handleSelectApp(app.id)}
-                      className={`w-full text-left p-4 border-l-4 transition-all ${
-                        isSelected
-                          ? 'border-primary bg-primary/5'
-                          : 'border-transparent hover:bg-muted/50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="font-medium text-sm">{app.name}</div>
-                        {screen ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        ) : (
-                          <XCircle className="w-4 h-4 text-gray-400" />
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground font-mono">{app.client_id}</div>
-                      {screen && (
-                        <div className="mt-2">
-                          {getStatusBadge(screen.publishing_status)}
-            </div>
+        <div className="flex flex-col gap-3 xs:flex-row xs:items-center xs:gap-4">
+          <Select
+            value={selectedAppId?.toString() ?? ""}
+            onValueChange={(v) => v && handleSelectApp(Number(v))}
+          >
+            <SelectTrigger className="w-full min-w-[220px] xs:w-auto bg-background">
+              <SelectValue placeholder="Select application" />
+            </SelectTrigger>
+            <SelectContent>
+              {oauthApps.map((app) => {
+                const screen = getConsentScreenForApp(app.id);
+                return (
+                  <SelectItem key={app.id} value={app.id.toString()}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{app.name}</span>
+                      {screen ? (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">
+                          {screen.publishing_status}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Not configured</span>
                       )}
-                    </button>
-                  );
-                })}
-          </div>
+                    </div>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="min-w-0 space-y-6">
+        {!selectedAppId ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="rounded-full bg-muted p-4 mb-4">
+                <Shield className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium text-foreground">Select an application</h3>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                Choose an app from the dropdown above to configure its consent screen and permissions.
+              </p>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="col-span-9">
-          {!selectedAppId ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Shield className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-medium mb-2">Select an OAuth Application</h3>
-                <p className="text-muted-foreground">
-                  Choose an application from the sidebar to configure its consent screen
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
+        ) : (
+          <>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-6">
-                <TabsTrigger value="configuration" className="gap-2">
-                  <Settings className="w-4 h-4" />
-                  Configuration
-                </TabsTrigger>
-                <TabsTrigger value="preview" className="gap-2">
-                  <Eye className="w-4 h-4" />
-                  Preview
-                </TabsTrigger>
-                <TabsTrigger value="scopes" className="gap-2">
-                  <Lock className="w-4 h-4" />
-                  Scopes & Permissions
-                </TabsTrigger>
-                <TabsTrigger value="advanced" className="gap-2">
-                  <Zap className="w-4 h-4" />
-                  Advanced
-                </TabsTrigger>
-              </TabsList>
+              <div className="flex justify-between" style={{ alignContent: 'center' }}>
+                <TabsList className="inline-flex h-11 w-full max-w-md rounded-lg bg-muted p-1 text-muted-foreground sm:max-w-none sm:w-auto">
+                  <TabsTrigger value="configuration" className="gap-2 rounded-md px-4 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                    <Settings className="h-4 w-4" />
+                    Setup
+                  </TabsTrigger>
+                  <TabsTrigger value="scopes" className="gap-2 rounded-md px-4 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                    <Lock className="h-4 w-4" />
+                    Permissions
+                  </TabsTrigger>
+                  <TabsTrigger value="advanced" className="gap-2 rounded-md px-4 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                    <Zap className="h-4 w-4" />
+                    Advanced
+                  </TabsTrigger>
+                  <TabsTrigger value="preview" className="gap-2 rounded-md px-4 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                    <Eye className="h-4 w-4" />
+                    Preview
+                  </TabsTrigger>
+                </TabsList>
+                <div className="flex flex-wrap items-center gap-3">
+                  {hasChanges && (
+                    <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200">
+                      Unsaved changes
+                    </Badge>
+                  )}
+                  <Button
+                    onClick={handleSave}
+                    disabled={!hasChanges}
+                    className="gap-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    Save
+                  </Button>
+                </div>
+              </div>
 
-              {/* Configuration Tab */}
-              <TabsContent value="configuration" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>App Information</CardTitle>
-                    <CardDescription>Basic information about your application</CardDescription>
+              {/* Setup Tab */}
+              <TabsContent value="configuration" className="mt-6 space-y-8">
+                <Card className="border-border/60 shadow-none">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                        <Palette className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">Branding & app info</CardTitle>
+                        <CardDescription>Name, description, logo, and homepage shown to users</CardDescription>
+                      </div>
+                    </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-5">
                     <div className="space-y-2">
-                      <Label htmlFor="app-name">App name *</Label>
+                      <Label htmlFor="app-name">App name <span className="text-destructive">*</span></Label>
                       <Input
                         id="app-name"
                         value={formData.app_name || ''}
                         onChange={(e) => handleFormChange('app_name', e.target.value)}
                         placeholder="My Application"
+                        className="max-w-md"
                       />
                     </div>
-
                     <div className="space-y-2">
                       <Label htmlFor="app-description">App description</Label>
                       <Textarea
@@ -728,17 +818,15 @@ const OAuthConsent = () => {
                         value={formData.app_description || ''}
                         onChange={(e) => handleFormChange('app_description', e.target.value)}
                         placeholder="Describe what your application does..."
-                        rows={4}
+                        rows={3}
                         maxLength={500}
+                        className="max-w-2xl resize-none"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        {(formData.app_description || '').length}/500 characters
-                      </p>
+                      <p className="text-xs text-muted-foreground">{(formData.app_description || '').length}/500</p>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-4 sm:grid-cols-2 max-w-2xl">
                       <div className="space-y-2">
-                        <Label htmlFor="app-logo">App logo URL</Label>
+                        <Label htmlFor="app-logo">Logo URL</Label>
                         <Input
                           id="app-logo"
                           type="url"
@@ -747,9 +835,8 @@ const OAuthConsent = () => {
                           placeholder="https://example.com/logo.png"
                         />
                       </div>
-
                       <div className="space-y-2">
-                        <Label htmlFor="application-homepage">Application homepage</Label>
+                        <Label htmlFor="application-homepage">Homepage URL</Label>
                         <Input
                           id="application-homepage"
                           type="url"
@@ -762,15 +849,22 @@ const OAuthConsent = () => {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Contact Information</CardTitle>
-                    <CardDescription>How users can reach you</CardDescription>
+                <Card className="border-border/60 shadow-none">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                        <Mail className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">Contact</CardTitle>
+                        <CardDescription>Emails shown to users for support and developer contact</CardDescription>
+                      </div>
+                    </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                  <CardContent>
+                    <div className="grid gap-4 sm:grid-cols-2 max-w-2xl">
                       <div className="space-y-2">
-                        <Label htmlFor="support-email">User support email *</Label>
+                        <Label htmlFor="support-email">Support email <span className="text-destructive">*</span></Label>
                         <Input
                           id="support-email"
                           type="email"
@@ -779,9 +873,8 @@ const OAuthConsent = () => {
                           placeholder="support@example.com"
                         />
                       </div>
-
                       <div className="space-y-2">
-                        <Label htmlFor="developer-email">Developer contact email *</Label>
+                        <Label htmlFor="developer-email">Developer email <span className="text-destructive">*</span></Label>
                         <Input
                           id="developer-email"
                           type="email"
@@ -794,13 +887,20 @@ const OAuthConsent = () => {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Privacy & Terms</CardTitle>
-                    <CardDescription>Legal information for users</CardDescription>
+                <Card className="border-border/60 shadow-none">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                        <FileText className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">Legal & domains</CardTitle>
+                        <CardDescription>Privacy, terms, and authorized domains</CardDescription>
+                      </div>
+                    </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                  <CardContent className="space-y-5">
+                    <div className="grid gap-4 sm:grid-cols-2 max-w-2xl">
                       <div className="space-y-2">
                         <Label htmlFor="privacy-policy">Privacy policy URL</Label>
                         <Input
@@ -810,8 +910,7 @@ const OAuthConsent = () => {
                           onChange={(e) => handleFormChange('privacy_policy_url', e.target.value)}
                           placeholder="https://example.com/privacy"
                         />
-            </div>
-
+                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="terms-of-service">Terms of service URL</Label>
                         <Input
@@ -821,377 +920,332 @@ const OAuthConsent = () => {
                           onChange={(e) => handleFormChange('terms_of_service_url', e.target.value)}
                           placeholder="https://example.com/terms"
                         />
-          </div>
-        </div>
-
-                    <div className="space-y-2">
+                      </div>
+                    </div>
+                    <div className="space-y-2 max-w-2xl">
                       <Label htmlFor="authorized-domains">Authorized domains</Label>
                       <Textarea
                         id="authorized-domains"
                         value={(formData.authorized_domains_list || []).join('\n')}
-                        onChange={(e) => handleFormChange('authorized_domains_list', e.target.value.split('\n').filter(d => d.trim()))}
-                        placeholder="example.com&#10;subdomain.example.com"
-                        rows={4}
+                        onChange={(e) => handleFormChange('authorized_domains_list', e.target.value.split('\n').map(d => d.trim()))}
+                        placeholder="example.com&#10;app.example.com"
+                        rows={3}
+                        className="resize-none font-mono text-sm"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        One domain per line. Users from these domains can access your app.
-                      </p>
+                      <p className="text-xs text-muted-foreground">One domain per line. Only these origins can use this app.</p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Publishing</CardTitle>
-                    <CardDescription>Control when your consent screen is visible</CardDescription>
+                <Card className="border-border/60 shadow-none">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                        <Globe className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">Publishing status</CardTitle>
+                        <CardDescription>When the consent screen is visible to users</CardDescription>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
-                      <Label htmlFor="publishing-status">Publishing status</Label>
-                      <Select
-                        value={formData.publishing_status || 'draft'}
-                        onValueChange={(value: 'draft' | 'testing' | 'published') =>
-                          handleFormChange('publishing_status', value)
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="draft">Draft - Not visible to users</SelectItem>
-                          <SelectItem value="testing">Testing - Visible to test users</SelectItem>
-                          <SelectItem value="published">Published - Visible to all users</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <Select
+                      value={formData.publishing_status || 'draft'}
+                      onValueChange={(value: 'draft' | 'testing' | 'published') =>
+                        handleFormChange('publishing_status', value)
+                      }
+                    >
+                      <SelectTrigger className="max-w-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="draft">Draft — not visible to users</SelectItem>
+                        <SelectItem value="testing">Testing — visible to test users</SelectItem>
+                        <SelectItem value="published">Published — visible to all users</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              {/* Preview Tab */}
-              <TabsContent value="preview" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
+              {/* Preview Tab (used when sticky preview is hidden, e.g. smaller screens) */}
+              <TabsContent value="preview" className="mt-6">
+                <Card className="border-border/60 shadow-none">
+                  <CardHeader className="pb-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
                       <div>
-                        <CardTitle>Live Preview</CardTitle>
-                        <CardDescription>See exactly how your consent screen will appear to users</CardDescription>
+                        <CardTitle className="text-base">How users will see it</CardTitle>
+                        <CardDescription>Preview your consent screen on different screen sizes</CardDescription>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant={previewDevice === "desktop" ? "default" : "outline"}
-                          size="sm"
+                      <div className="flex rounded-lg border border-border bg-muted/30 p-0.5">
+                        <button
+                          type="button"
                           onClick={() => setPreviewDevice("desktop")}
+                          className={`rounded-md px-3 py-2 text-sm transition-colors ${previewDevice === "desktop" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                         >
-                          <Monitor className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant={previewDevice === "tablet" ? "default" : "outline"}
-                          size="sm"
+                          <Monitor className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setPreviewDevice("tablet")}
+                          className={`rounded-md px-3 py-2 text-sm transition-colors ${previewDevice === "tablet" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                         >
-                          <Tablet className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant={previewDevice === "mobile" ? "default" : "outline"}
-                          size="sm"
+                          <Tablet className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setPreviewDevice("mobile")}
+                          className={`rounded-md px-3 py-2 text-sm transition-colors ${previewDevice === "mobile" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                         >
-                          <Smartphone className="w-4 h-4" />
-                        </Button>
+                          <Smartphone className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="bg-muted/20 rounded-2xl p-8 min-h-[600px] border border-border">
+                    <div className="rounded-2xl min-h-[520px] flex items-start justify-center">
                       <ConsentPreview />
                     </div>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              {/* Scopes Tab */}
-              <TabsContent value="scopes" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>Identity Blocks & Permissions</CardTitle>
-                        <CardDescription>
-                          Select blocks from the panel and add reasons for why your app needs access to each
-                        </CardDescription>
-                      </div>
-                      <Button onClick={() => setBlockPickerOpen(true)} variant="outline" className="gap-2">
-                        <Plus className="w-4 h-4" />
-                        Add Block
+              {/* Permissions Tab – Identity Canvas style (like sva_client MyVault) */}
+              <TabsContent value="scopes" className="mt-6">
+                <div className="relative">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold tracking-tight text-foreground">Data & permissions</h2>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        Add identity blocks and explain why your app needs each. Users see these on the consent screen.
+                      </p>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <Button
+                        onClick={() => setBlockPickerOpen(true)}
+                        className="gap-2 font-medium"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add permission
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        title={blockPickerOpen ? "Close block panel" : "Open block panel"}
+                        onClick={() => setBlockPickerOpen(v => !v)}
+                      >
+                        {blockPickerOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                       </Button>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Selected Blocks */}
-                    {selectedBlocks.length === 0 ? (
-                      <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                        <Shield className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold mb-2">No blocks selected</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Click "Add Block" to select identity blocks your application needs access to
-                        </p>
-                        <Button onClick={() => setBlockPickerOpen(true)} variant="outline">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Your First Block
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div>
-                          <h3 className="text-lg font-semibold mb-2">Selected Blocks</h3>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            {selectedBlocks.length} block{selectedBlocks.length !== 1 ? 's' : ''} selected
-                          </p>
-                        </div>
-                        <div className="space-y-3">
-                          {selectedBlocks.map((selectedBlock) => {
-                            const block = 
-                              selectedBlock.type in identityBlocks 
-                                ? identityBlocks[selectedBlock.type as BlockType]
-                                : verificationBlocks[selectedBlock.type as VerificationBlockType];
-                            
+                  </div>
+
+                  {selectedBlocks.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
+                      <div className="text-base font-semibold text-foreground mb-1">No blocks yet</div>
+                      <div className="text-sm text-muted-foreground mb-4">Use the panel to add your first identity block.</div>
+                      <Button variant="outline" onClick={() => setBlockPickerOpen(true)} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Blocks
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {selectedBlocks.map((selectedBlock) => {
+                        const block =
+                          selectedBlock.type in identityBlocks
+                            ? identityBlocks[selectedBlock.type as BlockType]
+                            : verificationBlocks[selectedBlock.type as VerificationBlockType];
+
+                        return (
+                          <Card
+                            key={selectedBlock.id}
+                            className="relative rounded-xl border border-border bg-card shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
+                          >
+                            <CardHeader className="flex flex-row items-start gap-3 p-4 pb-2">
+                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15 text-base">
+                                {block.icon}
+                              </span>
+                              <div className="flex-1 min-w-0" style={{marginTop:'0px'}}>
+                                <CardTitle className="text-base font-semibold leading-tight truncate">{block.title}</CardTitle>
+                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{block.description}</p>
+                                {'verificationMethod' in block && block.verificationMethod && (
+                                  <Badge variant="secondary" className="mt-1.5 text-[10px] font-normal">
+                                    {block.verificationMethod === "otp" && "OTP"}
+                                    {block.verificationMethod === "document" && "Document"}
+                                    {block.verificationMethod === "both" && "OTP or document"}
+                                  </Badge>
+                                )}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveBlock(selectedBlock.id)}
+                                className="h-8 w-8 shrink-0 opacity-70 hover:opacity-100 hover:bg-destructive/10 hover:text-destructive rounded-md"
+                                aria-label="Remove block"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </CardHeader>
+                            <CardContent className="p-4 pt-0">
+                              <Label className="text-xs text-muted-foreground">Reason shown to user (optional)</Label>
+                              <Textarea
+                                value={selectedBlock.reason}
+                                onChange={(e) => handleUpdateBlockReason(selectedBlock.id, e.target.value)}
+                                placeholder="Why your app needs this..."
+                                rows={2}
+                                className="mt-1.5 resize-none text-sm border-border/80"
+                              />
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Block library drawer – like sva_client BlockLibraryDrawer */}
+                <Sheet open={blockPickerOpen} onOpenChange={setBlockPickerOpen}>
+                  <SheetContent side="right" className="w-full sm:max-w-[320px] p-0 flex flex-col">
+                    <SheetHeader className="p-4 pb-3 border-b border-border">
+                      <SheetTitle className="text-left">Identity Blocks</SheetTitle>
+                    </SheetHeader>
+                    <div className="flex flex-col gap-3 p-3 border-b border-border">
+                      <Select value={blockLibraryCategory} onValueChange={setBlockLibraryCategory}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="core">Core</SelectItem>
+                          <SelectItem value="profile">Profile</SelectItem>
+                          <SelectItem value="contact">Contact</SelectItem>
+                          <SelectItem value="verification">Verified</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        placeholder="Search blocks..."
+                        value={blockLibrarySearch}
+                        onChange={(e) => setBlockLibrarySearch(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <ScrollArea className="flex-1 px-3 py-3">
+                      <div className="grid grid-cols-2 gap-3 pb-4">
+                        {(
+                          blockLibraryCategory === "all"
+                            ? [...blocksByCategory.core, ...blocksByCategory.profile, ...blocksByCategory.contact, ...blocksByCategory.verification]
+                            : blocksByCategory[blockLibraryCategory as keyof typeof blocksByCategory] || []
+                        )
+                          .filter((type) => {
+                            const def = type in identityBlocks ? identityBlocks[type as BlockType] : verificationBlocks[type as VerificationBlockType];
+                            const q = blockLibrarySearch.trim().toLowerCase();
+                            if (!q) return true;
+                            return def.title.toLowerCase().includes(q) || def.description.toLowerCase().includes(q);
+                          })
+                          .map((type) => {
+                            const def = type in identityBlocks ? identityBlocks[type as BlockType] : verificationBlocks[type as VerificationBlockType];
+                            const isAdded = selectedBlocks.some((b) => b.type === type);
                             return (
-                              <Card key={selectedBlock.id} className="border-primary">
-                                <CardContent className="pt-6">
-                                  <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1 space-y-3">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-2xl">{block.icon}</span>
-                                        <div>
-                                          <Label className="text-base font-medium">{block.title}</Label>
-                                          <p className="text-sm text-muted-foreground">{block.description}</p>
-                                          {'verificationMethod' in block && block.verificationMethod && (
-                                            <Badge variant="outline" className="mt-1 text-xs">
-                                              {block.verificationMethod === "otp" && "OTP Verified"}
-                                              {block.verificationMethod === "document" && "Document Verified"}
-                                              {block.verificationMethod === "both" && "OTP or Document Verified"}
-                                            </Badge>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="space-y-2">
-                                        <Label className="text-sm font-medium">Reason for requesting this block</Label>
-                                        <Textarea
-                                          value={selectedBlock.reason}
-                                          onChange={(e) => handleUpdateBlockReason(selectedBlock.id, e.target.value)}
-                                          placeholder="Explain why your app needs access to this block..."
-                                          rows={3}
-                                        />
-                                      </div>
-                                    </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleRemoveBlock(selectedBlock.id)}
-                                      className="flex-shrink-0"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                </CardContent>
-                              </Card>
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() => !isAdded && handleAddBlock(type)}
+                                disabled={isAdded}
+                                className={`relative border bg-card border-border rounded-lg p-3 flex flex-col items-center text-center shadow-sm transition-all outline-none hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring ${isAdded ? "opacity-60 grayscale pointer-events-none" : "cursor-pointer hover:scale-[1.02]"}`}
+                              >
+                                <span className="mb-2 w-8 h-8 flex items-center justify-center text-base rounded-lg bg-muted text-muted-foreground">
+                                  {def.icon}
+                                </span>
+                                <span className="font-medium text-xs">{def.title}</span>
+                                <span className="text-[10px] mt-1 text-muted-foreground line-clamp-2 leading-snug">{def.description}</span>
+                                {isAdded && (
+                                  <span className="absolute inset-0 bg-background/80 dark:bg-background/80 flex items-center justify-center text-xs font-medium rounded-lg">
+                                    <Lock className="h-4 w-4 mr-1 text-muted-foreground" />
+                                    Added
+                                  </span>
+                                )}
+                              </button>
                             );
                           })}
-                        </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Block Picker Dialog */}
-                <CommandDialog open={blockPickerOpen} onOpenChange={setBlockPickerOpen}>
-                  <CommandInput placeholder="Search blocks..." />
-                  <CommandList>
-                    <CommandEmpty>No blocks found.</CommandEmpty>
-                    
-                    {/* Core Identity Blocks */}
-                    <CommandGroup heading="Core Identity">
-                      {blocksByCategory.core.map((blockType) => {
-                        const block = identityBlocks[blockType as BlockType];
-                        const isAdded = selectedBlocks.some(b => b.type === blockType);
-                        return (
-                          <CommandItem
-                            key={blockType}
-                            value={block.title}
-                            onSelect={() => !isAdded && handleAddBlock(blockType)}
-                            disabled={isAdded}
-                            className={isAdded ? "opacity-50" : ""}
-                          >
-                            <span className="mr-2 text-xl">{block.icon}</span>
-                            <div className="flex-1">
-                              <div className="font-medium">{block.title}</div>
-                              <div className="text-xs text-muted-foreground">{block.description}</div>
-                            </div>
-                            {isAdded && <Badge variant="secondary" className="ml-2">Added</Badge>}
-                          </CommandItem>
-                        );
-                      })}
-                    </CommandGroup>
-
-                    {/* Profile Blocks */}
-                    <CommandGroup heading="Profile Information">
-                      {blocksByCategory.profile.map((blockType) => {
-                        const block = identityBlocks[blockType as BlockType];
-                        const isAdded = selectedBlocks.some(b => b.type === blockType);
-                        return (
-                          <CommandItem
-                            key={blockType}
-                            value={block.title}
-                            onSelect={() => !isAdded && handleAddBlock(blockType)}
-                            disabled={isAdded}
-                            className={isAdded ? "opacity-50" : ""}
-                          >
-                            <span className="mr-2 text-xl">{block.icon}</span>
-                            <div className="flex-1">
-                              <div className="font-medium">{block.title}</div>
-                              <div className="text-xs text-muted-foreground">{block.description}</div>
-                            </div>
-                            {isAdded && <Badge variant="secondary" className="ml-2">Added</Badge>}
-                          </CommandItem>
-                        );
-                      })}
-                    </CommandGroup>
-
-                    {/* Contact Blocks */}
-                    <CommandGroup heading="Contact Information">
-                      {blocksByCategory.contact.map((blockType) => {
-                        const block = identityBlocks[blockType as BlockType];
-                        const isAdded = selectedBlocks.some(b => b.type === blockType);
-                        return (
-                          <CommandItem
-                            key={blockType}
-                            value={block.title}
-                            onSelect={() => !isAdded && handleAddBlock(blockType)}
-                            disabled={isAdded}
-                            className={isAdded ? "opacity-50" : ""}
-                          >
-                            <span className="mr-2 text-xl">{block.icon}</span>
-                            <div className="flex-1">
-                              <div className="font-medium">{block.title}</div>
-                              <div className="text-xs text-muted-foreground">{block.description}</div>
-                            </div>
-                            {isAdded && <Badge variant="secondary" className="ml-2">Added</Badge>}
-                          </CommandItem>
-                        );
-                      })}
-                    </CommandGroup>
-
-                    {/* Verification Blocks */}
-                    <CommandGroup heading="Verified Identity Information">
-                      {blocksByCategory.verification.map((blockType) => {
-                        const block = verificationBlocks[blockType as VerificationBlockType];
-                        const isAdded = selectedBlocks.some(b => b.type === blockType);
-                        return (
-                          <CommandItem
-                            key={blockType}
-                            value={block.title}
-                            onSelect={() => !isAdded && handleAddBlock(blockType)}
-                            disabled={isAdded}
-                            className={isAdded ? "opacity-50" : ""}
-                          >
-                            <span className="mr-2 text-xl">{block.icon}</span>
-                            <div className="flex-1">
-                              <div className="font-medium">{block.title}</div>
-                              <div className="text-xs text-muted-foreground">{block.description}</div>
-                              {block.verificationMethod && (
-                                <Badge variant="outline" className="mt-1 text-xs">
-                                  {block.verificationMethod === "otp" && "OTP Verified"}
-                                  {block.verificationMethod === "document" && "Document Verified"}
-                                  {block.verificationMethod === "both" && "OTP or Document Verified"}
-                                </Badge>
-                              )}
-                            </div>
-                            {isAdded && <Badge variant="secondary" className="ml-2">Added</Badge>}
-                          </CommandItem>
-                        );
-                      })}
-                    </CommandGroup>
-                  </CommandList>
-                </CommandDialog>
+                    </ScrollArea>
+                  </SheetContent>
+                </Sheet>
               </TabsContent>
 
               {/* Advanced Tab */}
-              <TabsContent value="advanced" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Advanced Settings</CardTitle>
-                    <CardDescription>Additional configuration options</CardDescription>
+              <TabsContent value="advanced" className="mt-6 space-y-6">
+                <Card className="border-border/60 shadow-none">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                        <Zap className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">Advanced options</CardTitle>
+                        <CardDescription>Optional behavior and future features</CardDescription>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Enable analytics tracking</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Track consent screen views and user interactions
-                        </p>
+                    <div className="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+                      <div>
+                        <Label className="text-sm font-medium">Analytics tracking</Label>
+                        <p className="text-xs text-muted-foreground">Track consent views and interactions</p>
                       </div>
                       <Switch />
                     </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Require explicit consent</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Users must explicitly approve each scope
-                        </p>
+                    <div className="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+                      <div>
+                        <Label className="text-sm font-medium">Require explicit consent</Label>
+                        <p className="text-xs text-muted-foreground">Users must approve each permission</p>
                       </div>
                       <Switch defaultChecked />
                     </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Show scope details by default</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Expand scope descriptions by default
-                        </p>
+                    <div className="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+                      <div>
+                        <Label className="text-sm font-medium">Expand scope details by default</Label>
+                        <p className="text-xs text-muted-foreground">Show full descriptions expanded</p>
                       </div>
                       <Switch />
                     </div>
-
-                    <Separator />
-
                     <div className="space-y-2">
-                      <Label>Custom redirect message</Label>
+                      <Label className="text-sm font-medium">Custom redirect message</Label>
                       <Textarea
-                        placeholder="Optional message shown after successful authorization..."
-                        rows={3}
+                        placeholder="Optional message after authorization..."
+                        rows={2}
+                        className="resize-none text-sm"
                       />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Export & Import</CardTitle>
-                    <CardDescription>Backup or share your consent screen configuration</CardDescription>
+                <Card className="border-border/60 shadow-none">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base">Export & import</CardTitle>
+                    <CardDescription>Backup or share consent screen configuration</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex gap-3">
-                      <Button variant="outline" className="flex-1">
-                        <Download className="w-4 h-4 mr-2" />
-                        Export Configuration
-          </Button>
-                      <Button variant="outline" className="flex-1">
-                        <Upload className="w-4 h-4 mr-2" />
-                        Import Configuration
-          </Button>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-3">
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Download className="h-4 w-4" />
+                        Export
+                      </Button>
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Upload className="h-4 w-4" />
+                        Import
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
               </TabsContent>
             </Tabs>
-          )}
-        </div>
+
+
+          </>
+        )}
       </div>
     </div>
   );
