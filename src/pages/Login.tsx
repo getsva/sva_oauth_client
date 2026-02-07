@@ -53,7 +53,7 @@ const Login = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary border-t-transparent mx-auto mb-4" />
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -282,9 +282,11 @@ const Login = () => {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-14 bg-gradient-primary hover:opacity-90 text-lg font-semibold shadow-glow disabled:opacity-50"
+                variant="hero"
+                size="xl"
+                className="w-full h-14"
               >
-                {isLoading ? 'Signing in...' : 'Sign In'}
+                {isLoading ? "Signing in..." : "Sign In"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </form>

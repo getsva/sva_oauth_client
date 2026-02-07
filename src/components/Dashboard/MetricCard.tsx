@@ -9,7 +9,7 @@ interface MetricCardProps {
 
 export const MetricCard = ({ title, icon }: MetricCardProps) => {
   return (
-    <Card className="p-6 bg-card border-border">
+    <Card className="p-6 rounded-2xl bg-card/50 border border-border/50 shadow-card">
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-2">
           {icon}

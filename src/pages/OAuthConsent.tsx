@@ -461,38 +461,38 @@ const OAuthConsent = () => {
 
   return (
       <div className={`${deviceWidths[previewDevice]} transition-all duration-300`}>
-        <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg p-8 mb-6 shadow-lg">
-          <div className="bg-white rounded-lg p-6 shadow-xl">
+        <div className="bg-gradient-to-br from-card to-background border border-border rounded-2xl p-8 mb-6 shadow-card">
+          <div className="bg-card rounded-xl p-6 border border-border">
             {/* Logo and App Name */}
             <div className="text-center mb-6">
               {previewData.app_logo && (
                 <img 
                   src={previewData.app_logo} 
                   alt={previewData.app_name}
-                  className="w-16 h-16 mx-auto mb-4 rounded-lg object-cover"
+                  className="w-16 h-16 mx-auto mb-4 rounded-xl object-cover"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
               )}
-              <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+              <h1 className="text-2xl font-semibold text-foreground mb-2">
                 {previewData.app_name}
               </h1>
               {previewData.app_description && (
-                <p className="text-sm text-gray-600">{previewData.app_description}</p>
+                <p className="text-sm text-muted-foreground">{previewData.app_description}</p>
               )}
       </div>
 
             {/* App Info */}
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <div className="font-medium text-gray-900 mb-1">{previewData.app_name}</div>
-              <div className="text-sm text-gray-600">wants to access your account</div>
+            <div className="bg-muted/50 rounded-xl p-4 mb-6 border border-border">
+              <div className="font-medium text-foreground mb-1">{previewData.app_name}</div>
+              <div className="text-sm text-muted-foreground">wants to access your account</div>
               {previewData.application_homepage && (
                 <a 
                   href={previewData.application_homepage} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-sm text-purple-600 hover:underline mt-2 inline-block"
+                  className="text-sm text-primary hover:underline mt-2 inline-block"
                 >
                   Visit application →
                 </a>
@@ -502,24 +502,24 @@ const OAuthConsent = () => {
             {/* Scopes/Blocks */}
             {previewData.scopes.length > 0 && (
             <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-900 mb-4">
+              <h3 className="text-sm font-medium text-foreground mb-4">
                 This application will be able to:
               </h3>
               <div className="space-y-3">
                 {previewData.scopes.map((scope, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+                  <div key={index} className="flex items-start gap-3 p-3 bg-muted/30 rounded-xl border border-border">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center mt-0.5 flex-shrink-0">
                       {scope.icon ? (
                         <span className="text-lg">{scope.icon}</span>
                       ) : (
-                        <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                        <CheckCircle2 className="w-4 h-4 text-primary" />
                       )}
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-sm text-gray-900 mb-1">{scope.scope}</div>
-                      <div className="text-xs text-gray-600">{scope.description}</div>
+                      <div className="font-medium text-sm text-foreground mb-1">{scope.scope}</div>
+                      <div className="text-xs text-muted-foreground">{scope.description}</div>
                       {scope.reason && (
-                        <div className="text-xs text-gray-500 italic mt-1">
+                        <div className="text-xs text-muted-foreground italic mt-1">
                           Reason: {scope.reason}
                         </div>
                       )}
@@ -532,32 +532,32 @@ const OAuthConsent = () => {
 
             {/* Actions */}
             <div className="flex gap-3 mb-4">
-              <button className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-colors">
+              <button className="flex-1 px-4 py-2 bg-muted text-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors border border-border">
                 Deny
               </button>
-              <button className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors">
+              <button className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors shadow-glow">
                 Authorize
               </button>
           </div>
 
             {/* Footer Links */}
             {(previewData.privacy_policy_url || previewData.terms_of_service_url || previewData.support_email) && (
-              <div className="pt-4 border-t border-gray-200 text-xs text-gray-500">
+              <div className="pt-4 border-t border-border text-xs text-muted-foreground">
                 <div className="flex flex-wrap gap-4 justify-center mb-2">
                   {previewData.privacy_policy_url && (
-                    <a href={previewData.privacy_policy_url} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">
+                    <a href={previewData.privacy_policy_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                       Privacy Policy
                     </a>
                   )}
                   {previewData.terms_of_service_url && (
-                    <a href={previewData.terms_of_service_url} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">
+                    <a href={previewData.terms_of_service_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                       Terms of Service
                     </a>
                   )}
                 </div>
                 {previewData.support_email && (
                   <div className="text-center">
-                    Support: <a href={`mailto:${previewData.support_email}`} className="text-purple-600 hover:underline">
+                    Support: <a href={`mailto:${previewData.support_email}`} className="text-primary hover:underline">
                       {previewData.support_email}
                     </a>
                   </div>
@@ -565,7 +565,7 @@ const OAuthConsent = () => {
               </div>
             )}
 
-            <div className="text-xs text-gray-400 text-center mt-4">
+            <div className="text-xs text-muted-foreground text-center mt-4">
               Redirecting to: {selectedApp?.client_id || 'your-app.com'}
             </div>
           </div>
@@ -576,9 +576,9 @@ const OAuthConsent = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-screen">
+      <div className="p-6 flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary border-t-transparent mx-auto mb-4" />
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -600,12 +600,12 @@ const OAuthConsent = () => {
   }
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto">
+    <div className="">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <div>
-            <h1 className="text-3xl font-semibold text-foreground mb-2">OAuth Consent Screen</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">OAuth Consent Screen</h1>
             <p className="text-muted-foreground">
               Configure and preview how your OAuth application appears to users
             </p>
@@ -903,7 +903,7 @@ const OAuthConsent = () => {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="bg-gray-100 dark:bg-gray-900 rounded-lg p-8 min-h-[600px]">
+                    <div className="bg-muted/20 rounded-2xl p-8 min-h-[600px] border border-border">
                       <ConsentPreview />
                     </div>
                   </CardContent>

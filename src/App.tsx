@@ -10,7 +10,6 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
-import Library from "./pages/Library";
 import Credentials from "./pages/Credentials";
 import OAuthConsent from "./pages/OAuthConsent";
 import OAuthCallback from "./pages/OAuthCallback";
@@ -37,7 +36,6 @@ const App = () => (
               {/* Protected routes with layout */}
               <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/library" element={<Library />} />
                 <Route path="/credentials" element={<Credentials />} />
                 <Route path="/oauth-consent" element={<OAuthConsent />} />
                 <Route path="/usage-agreements" element={<UsageAgreements />} />

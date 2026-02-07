@@ -448,7 +448,11 @@ const Credentials = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Credentials</h1>
+        <p className="text-muted-foreground mt-1">Manage OAuth apps and API keys</p>
+      </div>
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-foreground mb-1">OAuth 2.0 Client IDs</h1>

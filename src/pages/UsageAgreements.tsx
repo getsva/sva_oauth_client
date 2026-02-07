@@ -5,13 +5,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 const UsageAgreements = () => {
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-normal text-foreground mb-1">Page usage agreements</h1>
+    <div className="">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Page usage agreements</h1>
+        <p className="text-muted-foreground mt-1">Consent and revoke access for third-party services</p>
       </div>
 
       <div className="flex items-center gap-2 mb-6">
-        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
+        <Button variant="default">
           <RotateCcw className="w-4 h-4 mr-2" />
           Refresh
         </Button>
@@ -20,7 +21,7 @@ const UsageAgreements = () => {
         </Button>
       </div>
 
-      <div className="bg-muted/30 rounded-lg p-4 mb-6">
+      <div className="bg-card/50 border border-border/50 rounded-2xl p-4 mb-6 shadow-card">
         <p className="text-sm text-foreground">
           These are agreements you have consented to in order to use pages in the console that send
           information to systems not owned by Google. These are necessary to let you configure a
@@ -29,7 +30,7 @@ const UsageAgreements = () => {
         </p>
       </div>
 
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
+      <div className="bg-card/50 border border-border/50 rounded-2xl overflow-hidden shadow-card">
         <div className="px-6 py-4 border-b border-border">
           <h2 className="text-base font-medium text-foreground">Page usage agreements</h2>
         </div>
